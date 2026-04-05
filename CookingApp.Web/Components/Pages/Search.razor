@@ -1,0 +1,69 @@
+@page "/search"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Search Results</PageTitle>
+
+<div class="page-header">
+    <h1>Search Results</h1>
+    @if (!string.IsNullOrEmpty(Q))
+    {
+        <p>Showing results for "<strong>@Q</strong>"</p>
+    }
+</div>
+
+@if (isLoading)
+{
+    <div class="loading-grid">
+        @for (int i = 0; i < 6; i++) { <div class="recipe-card skeleton"></div> }
+    </div>
+}
+else if (recipes.Count == 0)
+{
+    <div class="empty-state">
+        <p>No recipes found for "@Q".</p>
+        <a href="/browse" class="btn-primary">Browse all recipes →</a>
+    </div>
+}
+else
+{
+    <div class="recipe-grid">
+        @foreach (var r in recipes)
+        {
+            var recipe = r;
+            <div class="recipe-card" @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}")'>
+                <div class="recipe-card-img-placeholder">🍴</div>
+                <div class="recipe-card-body">
+                    <h3>@recipe.Name</h3>
+                    <div class="recipe-meta">
+                        <span>🌍 @recipe.Country</span>
+                        <span>⏱️ @recipe.TotalTimeMinutes min</span>
+                    </div>
+                    <div class="flavor-chips small">
+                        @foreach (var tag in recipe.FlavorTags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            <span class="flavor-chip">@tag</span>
+                        }
+                    </div>
+                    <span class="category-badge">@recipe.Category</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? Q { get; set; }
+
+    private List<CookingApp.Core.DTOs.RecipeSummaryDto> recipes = [];
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        recipes = await Api.SearchRecipesAsync(
+            new CookingApp.Core.DTOs.RecipeSearchRequest(Q, null, null, null, null));
+        isLoading = false;
+    }
+}

@@ -1,0 +1,81 @@
+@page "/preferences"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ApiClient Api
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<PageTitle>My Preferences</PageTitle>
+
+@if (!Auth.IsLoggedIn)
+{
+    Nav.NavigateTo("/login");
+    return;
+}
+
+<div class="page-header">
+    <h1>My Preferences</h1>
+    <p>Recipes and suggestions will be tailored around these settings.</p>
+</div>
+
+@if (isSaved)
+{
+    <div class="alert-success">✅ Preferences saved!</div>
+}
+
+<div class="prefs-form">
+
+    <!-- ── Disliked Flavours ──────────────────────────────────────────────── -->
+    <section class="prefs-section">
+        <h2>Flavours I dislike</h2>
+        <p class="hint">Recipes containing these flavour tags will be hidden from your results.</p>
+        <div class="flavor-chips">
+            @foreach (var flavor in allFlavors)
+            {
+                var f = flavor;
+                <button class="flavor-chip @(dislikedFlavors.Contains(f) ? "active disliked" : "")"
+                        @onclick="() => ToggleFlavor(f)">
+                    @f
+                </button>
+            }
+        </div>
+    </section>
+
+    <!-- ── Disliked Ingredients ───────────────────────────────────────────── -->
+    <section class="prefs-section">
+        <h2>Ingredients I don't like</h2>
+        <p class="hint">Recipes containing these ingredients will be excluded.</p>
+
+        <div class="ingredient-search">
+            <input placeholder="Type an ingredient to add…"
+                   value="@ingredientSearch"
+                   @oninput="OnIngredientInput" />
+            @if (ingredientSuggestions.Count > 0)
+            {
+                <ul class="autocomplete-dropdown">
+                    @foreach (var s in ingredientSuggestions)
+                    {
+                        var sug = s;
+                        <li @onclick="() => AddDislikedIngredient(sug)">
+                            @sug.IngredientName
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <div class="disliked-ingredient-tags">
+            @foreach (var ing in dislikedIngredients)
+            {
+                var i = ing;
+                <span class="ingredient-tag">
+                    @i.IngredientName
+                    <button @onclick="() => RemoveDislikedIngredient(i.IngredientId)">✕</button>
+                </span>
+            }
+        </div>
+    </section>
+
+    <button class="btn-primary" @onclick="Save" disabled="@isSaving">
+        @(isSaving ? "Saving…" : "Save Preferences")
+    </button>
+</div>

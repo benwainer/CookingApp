@@ -1,0 +1,58 @@
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<div class="ai-widget @(isOpen ? "open" : "")">
+    <!-- Toggle Button -->
+    <button class="ai-toggle-btn" @onclick="ToggleOpen" title="AI Cooking Assistant">
+        @if (isOpen) { <span>✕</span> } else { <span>🤖</span> }
+    </button>
+
+    @if (isOpen)
+    {
+        <div class="ai-panel">
+            <div class="ai-panel-header">
+                <h3>🤖 Cooking Assistant</h3>
+                <p class="ai-hint">Ask me anything about cooking, ingredients, or techniques.</p>
+            </div>
+
+            <div class="ai-messages" @ref="messagesDiv">
+                @if (messages.Count == 0)
+                {
+                    <div class="ai-welcome">
+                        <p>Hi! I'm your AI cooking assistant. I can help you with:</p>
+                        <ul>
+                            <li>Ingredient substitutions</li>
+                            <li>Cooking techniques</li>
+                            <li>Recipe variations</li>
+                            <li>Nutrition questions</li>
+                        </ul>
+                    </div>
+                }
+                @foreach (var msg in messages)
+                {
+                    <div class="ai-message @msg.Role">
+                        <div class="ai-bubble">@((MarkupString)FormatMessage(msg.Content))</div>
+                    </div>
+                }
+                @if (isThinking)
+                {
+                    <div class="ai-message assistant">
+                        <div class="ai-bubble thinking">
+                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="ai-input-row">
+                <input placeholder="Ask about this recipe…"
+                       @bind="userInput"
+                       @onkeydown="OnKeyDown"
+                       disabled="@isThinking" />
+                <button class="btn-primary" @onclick="Send" disabled="@(isThinking || string.IsNullOrWhiteSpace(userInput))">
+                    Send
+                </button>
+            </div>
+        </div>
+    }
+</div>

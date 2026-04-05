@@ -1,0 +1,92 @@
+@page "/browse"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Browse Recipes</PageTitle>
+
+<div class="page-header">
+    <h1>Browse Recipes</h1>
+    <p>@recipes.Count recipe@(recipes.Count == 1 ? "" : "s") found</p>
+</div>
+
+<!-- ── Filter Bar ─────────────────────────────────────────────────────────── -->
+<div class="filter-bar">
+    <select @bind="filterCategory" @bind:after="LoadRecipes">
+        <option value="">All categories</option>
+        @foreach (var cat in categories)
+        {
+            <option value="@cat">@cat</option>
+        }
+    </select>
+
+    <select @bind="filterCountry" @bind:after="LoadRecipes">
+        <option value="">All countries</option>
+        @foreach (var c in countries)
+        {
+            <option value="@c">@c</option>
+        }
+    </select>
+
+    <select @bind="filterIngredient" @bind:after="LoadRecipes">
+        <option value="">All ingredients</option>
+        @foreach (var i in ingredients)
+        {
+            <option value="@i">@i</option>
+        }
+    </select>
+
+    <button class="btn-secondary" @onclick="ClearFilters">Clear</button>
+</div>
+
+<!-- ── Recipe Grid ────────────────────────────────────────────────────────── -->
+@if (isLoading)
+{
+    <div class="loading-grid">
+        @for (int i = 0; i < 8; i++)
+        {
+            <div class="recipe-card skeleton"></div>
+        }
+    </div>
+}
+else if (recipes.Count == 0)
+{
+    <div class="empty-state">
+        <p>No recipes match your filters. Try removing some!</p>
+    </div>
+}
+else
+{
+    <div class="recipe-grid">
+        @foreach (var recipe in recipes)
+        {
+            var r = recipe;
+            <div class="recipe-card" @onclick='() => Nav.NavigateTo($"/recipe/{r.Id}")'>
+                <div class="recipe-card-img">
+                    @if (!string.IsNullOrEmpty(r.ImageUrl))
+                    {
+                        <img src="@r.ImageUrl" alt="@r.Name" />
+                    }
+                    else
+                    {
+                        <div class="recipe-card-img-placeholder">🍴</div>
+                    }
+                </div>
+                <div class="recipe-card-body">
+                    <h3>@r.Name</h3>
+                    <div class="recipe-meta">
+                        <span>🌍 @r.Country</span>
+                        <span>⏱️ @r.TotalTimeMinutes min</span>
+                    </div>
+                    <div class="flavor-chips small">
+                        @foreach (var tag in r.FlavorTags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            <span class="flavor-chip">@tag</span>
+                        }
+                    </div>
+                    <span class="category-badge">@r.Category</span>
+                </div>
+            </div>
+        }
+    </div>
+}

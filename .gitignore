@@ -1,0 +1,22 @@
+## .NET
+bin/
+obj/
+*.user
+.vs/
+*.suo
+.vscode/
+.claude/
+
+## Secrets - never commit these
+appsettings.Development.json
+**/appsettings.*.json
+!**/appsettings.json
+
+## EF migrations cache
+*.db
+*.db-shm
+*.db-wal
+
+## OS
+.DS_Store
+Thumbs.db

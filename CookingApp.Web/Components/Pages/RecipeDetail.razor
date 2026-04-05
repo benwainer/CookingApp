@@ -1,0 +1,169 @@
+@page "/recipe/{Id:int}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ApiClient Api
+@inject AuthStateService Auth
+@inject UserLocationService Location
+
+<PageTitle>@(recipe?.Name ?? "Recipe")</PageTitle>
+
+@if (isLoading)
+{
+    <div class="loading-spinner">Loading recipe…</div>
+}
+else if (recipe == null)
+{
+    <div class="empty-state">Recipe not found.</div>
+}
+else
+{
+    <div class="recipe-detail">
+
+        <!-- ── Header ────────────────────────────────────────────────────── -->
+        <div class="recipe-header">
+            <div class="recipe-header-text">
+                <span class="category-badge large">@recipe.Category</span>
+                <h1>@recipe.Name</h1>
+                <p class="recipe-description">@recipe.Description</p>
+
+                <div class="recipe-stats">
+                    <div class="stat"><span class="stat-label">Country</span> @recipe.Country</div>
+                    <div class="stat"><span class="stat-label">Prep</span> @recipe.PrepTimeMinutes min</div>
+                    <div class="stat"><span class="stat-label">Cook</span> @recipe.CookTimeMinutes min</div>
+                    <div class="stat"><span class="stat-label">Serves</span> @recipe.Servings</div>
+                </div>
+
+                <div class="flavor-chips">
+                    @foreach (var tag in recipe.FlavorTags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <span class="flavor-chip">@tag</span>
+                    }
+                </div>
+            </div>
+
+            @if (Auth.IsLoggedIn)
+            {
+                <button class="save-btn @(isSaved ? "saved" : "")" @onclick="ToggleSave">
+                    @(isSaved ? "❤️ Saved" : "🤍 Save Recipe")
+                </button>
+            }
+        </div>
+
+        <div class="recipe-body">
+
+            <!-- ── Ingredients ───────────────────────────────────────────── -->
+            <section class="ingredients-section">
+                <h2>Ingredients</h2>
+                <ul class="ingredient-list">
+                    @foreach (var ing in recipe.Ingredients)
+                    {
+                        var i = ing;
+                        <li class="ingredient-item">
+                            <div class="ingredient-main">
+                                <span class="ingredient-qty">@i.Quantity</span>
+                                <span class="ingredient-name">@i.IngredientName</span>
+                                @if (i.IsOptional)
+                                {
+                                    <span class="optional-badge">optional</span>
+                                }
+                            </div>
+
+                            <div class="ingredient-actions">
+                                <!-- Find nearby store -->
+                                <button class="btn-icon" title="Find nearby store"
+                                        @onclick="() => FindStore(i.IngredientName)">
+                                    🏪
+                                </button>
+
+                                <!-- I don't have this -->
+                                <button class="btn-icon substitute-btn"
+                                        title="I don't have this"
+                                        @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
+                                    🔄 I don't have this
+                                </button>
+                            </div>
+
+                            <!-- Substitute panel -->
+                            @if (substituteState.TryGetValue(i.IngredientId, out var state))
+                            {
+                                <div class="substitute-panel @(state.Sub == null ? "no-sub" : "")">
+                                    @if (state.IsLoading)
+                                    {
+                                        <span>Finding substitute…</span>
+                                    }
+                                    else if (state.Sub != null)
+                                    {
+                                        <div class="substitute-result">
+                                            <div class="sub-header">
+                                                <span class="sub-name">✅ Use: <strong>@state.Sub.SubstituteIngredientName</strong></span>
+                                                <span class="closeness-badge rank-@state.Sub.ClosenessRank">
+                                                    @ClosenessLabel(state.Sub.ClosenessRank)
+                                                </span>
+                                            </div>
+                                            <p class="sub-explanation">@state.Sub.Explanation</p>
+                                            @if (!string.IsNullOrEmpty(state.Sub.DishImpact))
+                                            {
+                                                <p class="dish-impact">⚠️ @state.Sub.DishImpact</p>
+                                            }
+                                            <button class="btn-text" @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
+                                                I don't have this either →
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="no-sub-message">
+                                            ❌ No more substitutes available for <strong>@i.IngredientName</strong>.
+                                            Without it, this dish will taste noticeably different from the original.
+                                        </p>
+                                    }
+                                </div>
+                            }
+
+                            <!-- Nearby store panel -->
+                            @if (storeResults.TryGetValue(i.IngredientName, out var stores))
+                            {
+                                <div class="store-panel">
+                                    @if (stores.Count == 0)
+                                    {
+                                        <p>No nearby stores found.</p>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var store in stores)
+                                        {
+                                            <div class="store-item @(store.IsOpenNow ? "open" : "closed")">
+                                                <div class="store-info">
+                                                    <strong>@store.Name</strong>
+                                                    <span>@store.Address</span>
+                                                    <span>@store.DistanceKm km away</span>
+                                                </div>
+                                                <div class="store-status">
+                                                    @(store.IsOpenNow ? "🟢 Open" : "🔴 Closed")
+                                                    @if (store.GoogleMapsUrl != null)
+                                                    {
+                                                        <a href="@store.GoogleMapsUrl" target="_blank">Maps →</a>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+
+            <!-- ── Instructions ──────────────────────────────────────────── -->
+            <section class="instructions-section">
+                <h2>Instructions</h2>
+                <ol class="instruction-list">
+                    @foreach (var step in recipe.Instructions.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <li>@step.TrimStart('0','1','2','3','4','5','6','7','8','9','.',' ')</li>
+                    }
+                </ol>
+            </section>
+        </div>
+    </div>
+}

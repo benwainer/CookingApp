@@ -1,0 +1,63 @@
+@page "/register"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ApiClient Api
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Create Account</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Create account</h1>
+
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="alert-error">@error</div>
+        }
+
+        <div class="form-group">
+            <label>Display name</label>
+            <input @bind="displayName" placeholder="Chef Marco" />
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" @bind="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" @bind="password" />
+        </div>
+
+        <button class="btn-primary full-width" @onclick="DoRegister" disabled="@isLoading">
+            @(isLoading ? "Creating account…" : "Create account")
+        </button>
+
+        <p class="auth-link">Already have an account? <a href="/login">Log in</a></p>
+    </div>
+</div>
+
+@code {
+    private string displayName = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string error = string.Empty;
+    private bool isLoading = false;
+
+    private async Task DoRegister()
+    {
+        error = string.Empty;
+        isLoading = true;
+        try
+        {
+            var result = await Api.RegisterAsync(
+                new CookingApp.Core.DTOs.RegisterRequest(email, displayName, password));
+            Auth.Login(result.Token, result.UserId, result.DisplayName);
+            Nav.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        isLoading = false;
+    }
+}

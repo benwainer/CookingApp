@@ -1,0 +1,60 @@
+@page "/saved"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ApiClient Api
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Saved Recipes</PageTitle>
+
+@if (!Auth.IsLoggedIn)
+{
+    Nav.NavigateTo("/login");
+    return;
+}
+
+<div class="page-header">
+    <h1>❤️ Saved Recipes</h1>
+</div>
+
+@if (isLoading)
+{
+    <p>Loading…</p>
+}
+else if (recipes.Count == 0)
+{
+    <div class="empty-state">
+        <p>You haven't saved any recipes yet.</p>
+        <a href="/browse" class="btn-primary">Browse recipes →</a>
+    </div>
+}
+else
+{
+    <div class="recipe-grid">
+        @foreach (var r in recipes)
+        {
+            var recipe = r;
+            <div class="recipe-card" @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}")'>
+                <div class="recipe-card-img-placeholder">🍴</div>
+                <div class="recipe-card-body">
+                    <h3>@recipe.Name</h3>
+                    <div class="recipe-meta">
+                        <span>🌍 @recipe.Country</span>
+                        <span>⏱️ @recipe.TotalTimeMinutes min</span>
+                    </div>
+                    <span class="category-badge">@recipe.Category</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<CookingApp.Core.DTOs.RecipeSummaryDto> recipes = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipes = await Api.GetSavedRecipesAsync();
+        isLoading = false;
+    }
+}

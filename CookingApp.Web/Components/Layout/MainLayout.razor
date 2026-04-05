@@ -1,0 +1,45 @@
+@inherits LayoutComponentBase
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<div class="app-shell">
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <span class="logo-icon">🍳</span>
+            <span class="logo-text">CookingApp</span>
+        </div>
+
+        <ul class="nav-links">
+            <li><NavLink href="/" Match="NavLinkMatch.All">🏠 Home</NavLink></li>
+            <li><NavLink href="/browse">🌍 Browse</NavLink></li>
+            <li><NavLink href="/search">🔍 Search</NavLink></li>
+            @if (Auth.IsLoggedIn)
+            {
+                <li><NavLink href="/saved">❤️ Saved</NavLink></li>
+                <li><NavLink href="/preferences">⚙️ Preferences</NavLink></li>
+                <li>
+                    <button class="nav-btn-link" @onclick="Logout">🚪 Log out</button>
+                </li>
+            }
+            else
+            {
+                <li><NavLink href="/login">🔑 Login</NavLink></li>
+                <li><NavLink href="/register">✨ Register</NavLink></li>
+            }
+        </ul>
+
+        <div class="sidebar-footer">
+            @if (Auth.IsLoggedIn)
+            {
+                <span>👤 @Auth.DisplayName</span>
+            }
+        </div>
+    </nav>
+
+    <main class="main-content">
+        @Body
+    </main>
+
+    <!-- Floating AI Assistant button -->
+    <AiAssistantWidget />
+</div>
