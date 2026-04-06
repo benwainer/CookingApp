@@ -34,6 +34,20 @@ public class RecipesController(IRecipeService recipeService) : ControllerBase
         return Ok(results);
     }
 
+    [HttpGet("countries")]
+    public async Task<IActionResult> GetCountries()
+    {
+        var countries = await recipeService.GetAllCountriesAsync();
+        return Ok(countries);
+    }
+
+    [HttpGet("main-ingredients")]
+    public async Task<IActionResult> GetMainIngredients()
+    {
+        var ingredients = await recipeService.GetAllMainIngredientsAsync();
+        return Ok(ingredients);
+    }
+
     private int? GetUserIdOrNull()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

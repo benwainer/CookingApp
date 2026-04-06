@@ -34,6 +34,12 @@ public class RecipeService(IRecipeRepository repo, IUserRepository userRepo) : I
 
     public Task<List<AutocompleteResult>> AutocompleteAsync(string prefix) =>
         repo.AutocompleteAsync(prefix);
+
+    public Task<List<string>> GetAllCountriesAsync() =>
+        repo.GetAllCountriesAsync();
+
+    public Task<List<string>> GetAllMainIngredientsAsync() =>
+        repo.GetAllMainIngredientsAsync();
 }
 
 // ─── SubstituteService ────────────────────────────────────────────────────────

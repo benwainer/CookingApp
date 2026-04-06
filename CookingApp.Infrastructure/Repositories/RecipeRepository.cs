@@ -31,10 +31,12 @@ public class RecipeRepository(AppDbContext db) : IRecipeRepository
 
         // ── Hard filters ──────────────────────────────────────────────────────
         if (!string.IsNullOrWhiteSpace(req.Country))
-            query = query.Where(r => r.Country == req.Country);
+            query = query.Where(r => EF.Functions.ILike(r.Country, req.Country));
 
         if (!string.IsNullOrWhiteSpace(req.MainIngredient))
-            query = query.Where(r => r.MainIngredientName == req.MainIngredient);
+            query = query.Where(r =>
+                EF.Functions.ILike(r.MainIngredientName, $"%{req.MainIngredient}%") ||
+                r.RecipeIngredients.Any(ri => EF.Functions.ILike(ri.Ingredient.Name, $"%{req.MainIngredient}%")));
 
         if (!string.IsNullOrWhiteSpace(req.Category))
             query = query.Where(r => r.Category == req.Category);

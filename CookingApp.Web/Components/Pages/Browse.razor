@@ -61,7 +61,7 @@ else
         @foreach (var recipe in recipes)
         {
             var r = recipe;
-            <div class="recipe-card" @onclick='() => Nav.NavigateTo($"/recipe/{r.Id}")'>
+            <div class="recipe-card" @onclick="() => OpenRecipe(r.Id)">
                 <div class="recipe-card-img">
                     @if (!string.IsNullOrEmpty(r.ImageUrl))
                     {

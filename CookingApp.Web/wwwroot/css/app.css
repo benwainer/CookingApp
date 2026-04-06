@@ -179,15 +179,29 @@ a:hover { text-decoration: underline; }
 .recipe-body { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 @media (max-width: 640px) { .recipe-body { grid-template-columns: 1fr; } }
 
-.ingredients-section h2, .instructions-section h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); }
+.instructions-section h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); }
+
+/* ── Unit Toggle ───────────────────────────────────────────────────────────── */
+.ingredients-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); }
+.ingredients-header h2 { font-size: 1.15rem; font-weight: 600; border: none; margin: 0; padding: 0; }
+.unit-toggle { display: flex; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; }
+.unit-btn { background: none; border: none; color: var(--color-text-muted); padding: 0.3rem 0.65rem; font-size: 0.78rem; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.unit-btn:hover { background: var(--color-border); color: var(--color-text); }
+.unit-btn.active { background: var(--color-primary); color: #fff; }
 
 /* ── Ingredient List ───────────────────────────────────────────────────────── */
 .ingredient-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
 .ingredient-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 0.75rem; }
 .ingredient-main { display: flex; align-items: center; gap: 0.5rem; }
-.ingredient-qty { font-size: 0.8rem; font-weight: 600; color: var(--color-primary); min-width: 60px; }
+.ingredient-qty {
+  font-size: 0.75rem; font-weight: 600; color: var(--color-primary);
+  background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.3);
+  padding: 2px 8px; border-radius: 5px;
+  white-space: nowrap; flex-shrink: 0;
+}
 .ingredient-name { flex: 1; font-size: 0.9rem; }
 .optional-badge { font-size: 0.7rem; color: var(--color-text-muted); background: var(--color-surface-2); padding: 1px 6px; border-radius: 4px; }
+.ingredient-descriptor { font-size: 0.78rem; color: var(--color-text-muted); font-style: italic; }
 .ingredient-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .substitute-btn { font-size: 0.8rem; color: var(--color-text-muted); }
 

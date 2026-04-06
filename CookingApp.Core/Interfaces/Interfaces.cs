@@ -43,6 +43,8 @@ public interface IRecipeService
     Task<List<RecipeSummaryDto>> SearchAsync(RecipeSearchRequest request, int? userId);
     Task<RecipeDetailDto?> GetDetailAsync(int id);
     Task<List<AutocompleteResult>> AutocompleteAsync(string prefix);
+    Task<List<string>> GetAllCountriesAsync();
+    Task<List<string>> GetAllMainIngredientsAsync();
 }
 
 public interface ISubstituteService

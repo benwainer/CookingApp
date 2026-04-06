@@ -55,18 +55,13 @@ public class ApiClient(HttpClient http, ILocalStorageService storage)
                ?? [];
     }
 
-    public async Task<List<string>> GetCountriesAsync()
-    {
-        // Re-use autocomplete with empty string not ideal; in prod add a dedicated endpoint
-        var results = await SearchRecipesAsync(new RecipeSearchRequest(null, null, null, null, null));
-        return results.Select(r => r.Country).Distinct().OrderBy(c => c).ToList();
-    }
+    public Task<List<string>> GetCountriesAsync() =>
+        http.GetFromJsonAsync<List<string>>("/api/recipes/countries", JsonOpts)
+            .ContinueWith(t => t.Result ?? []);
 
-    public async Task<List<string>> GetIngredientsAsync()
-    {
-        var results = await SearchRecipesAsync(new RecipeSearchRequest(null, null, null, null, null));
-        return results.Select(r => r.MainIngredientName).Distinct().OrderBy(i => i).ToList();
-    }
+    public Task<List<string>> GetIngredientsAsync() =>
+        http.GetFromJsonAsync<List<string>>("/api/recipes/main-ingredients", JsonOpts)
+            .ContinueWith(t => t.Result ?? []);
 
     // ── Substitutes ───────────────────────────────────────────────────────────
 

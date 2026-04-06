@@ -13,8 +13,9 @@
     <div class="search-bar-wrapper">
         <input class="search-input"
                placeholder="Try &quot;India&quot;, &quot;Chicken Breast&quot;, &quot;Spicy&quot;…"
-               value="@searchQuery"
-               @oninput="OnSearchInput"
+               @bind="searchQuery"
+               @bind:event="oninput"
+               @bind:after="FetchSuggestionsAsync"
                @onkeydown="OnKeyDown" />
         <button class="search-btn" @onclick="DoSearch">Search</button>
 
@@ -37,23 +38,23 @@
     <div class="browse-section">
         <h2>Browse by</h2>
         <div class="browse-tiles">
-            <div class="browse-tile" @onclick='() => Nav.NavigateTo("/browse?category=Breakfast")'>
+            <div class="browse-tile" @onclick='() => BrowseByCategory("Breakfast")'>
                 <span class="tile-icon">🌅</span>
                 <span>Breakfast</span>
             </div>
-            <div class="browse-tile" @onclick='() => Nav.NavigateTo("/browse?category=Snack")'>
+            <div class="browse-tile" @onclick='() => BrowseByCategory("Snack")'>
                 <span class="tile-icon">🥨</span>
                 <span>Snack</span>
             </div>
-            <div class="browse-tile" @onclick='() => Nav.NavigateTo("/browse?category=Starter")'>
+            <div class="browse-tile" @onclick='() => BrowseByCategory("Starter")'>
                 <span class="tile-icon">🥗</span>
                 <span>Starter</span>
             </div>
-            <div class="browse-tile" @onclick='() => Nav.NavigateTo("/browse?category=Main")'>
+            <div class="browse-tile" @onclick='() => BrowseByCategory("Main")'>
                 <span class="tile-icon">🍽️</span>
                 <span>Main Course</span>
             </div>
-            <div class="browse-tile" @onclick='() => Nav.NavigateTo("/browse?category=Dessert")'>
+            <div class="browse-tile" @onclick='() => BrowseByCategory("Dessert")'>
                 <span class="tile-icon">🍰</span>
                 <span>Dessert</span>
             </div>
@@ -61,7 +62,7 @@
 
         <h2>Browse by flavour</h2>
         <div class="flavor-chips">
-            @foreach (var flavor in new[] { "spicy", "sweet", "sour", "salty", "bitter", "savory", "crispy", "aromatic" })
+            @foreach (var flavor in new[] { "spicy", "sweet", "sour", "bitter", "savory", "crispy", "aromatic" })
             {
                 var f = flavor;
                 <button class="flavor-chip @(selectedFlavors.Contains(f) ? "active" : "")"

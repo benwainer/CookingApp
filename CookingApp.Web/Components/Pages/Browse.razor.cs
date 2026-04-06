@@ -64,4 +64,6 @@ public partial class Browse
         Flavors = null;
         await LoadRecipes();
     }
+
+    private void OpenRecipe(int id) => Nav.NavigateTo($"/recipe/{id}");
 }

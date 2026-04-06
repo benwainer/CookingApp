@@ -52,15 +52,28 @@ else
 
             <!-- ── Ingredients ───────────────────────────────────────────── -->
             <section class="ingredients-section">
-                <h2>Ingredients</h2>
+                <div class="ingredients-header">
+                    <h2>Ingredients</h2>
+                    <div class="unit-toggle">
+                        <button class="unit-btn @(selectedUnit == UnitSystem.Metric   ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Metric'>Metric</button>
+                        <button class="unit-btn @(selectedUnit == UnitSystem.Imperial ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Imperial'>Imperial</button>
+                        <button class="unit-btn @(selectedUnit == UnitSystem.Cups     ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Cups'>Cups</button>
+                        <button class="unit-btn @(selectedUnit == UnitSystem.Tbsp     ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Tbsp'>Tbsp</button>
+                </div>
+                </div>
                 <ul class="ingredient-list">
                     @foreach (var ing in recipe.Ingredients)
                     {
                         var i = ing;
+                        var (_, descriptor) = SplitQuantity(i.Quantity);
                         <li class="ingredient-item">
                             <div class="ingredient-main">
-                                <span class="ingredient-qty">@i.Quantity</span>
+                                <span class="ingredient-qty">@ConvertQuantity(i.Quantity, i.IngredientName)</span>
                                 <span class="ingredient-name">@i.IngredientName</span>
+                                @if (!string.IsNullOrEmpty(descriptor))
+                                {
+                                    <span class="ingredient-descriptor">@descriptor</span>
+                                }
                                 @if (i.IsOptional)
                                 {
                                     <span class="optional-badge">optional</span>
@@ -75,11 +88,14 @@ else
                                 </button>
 
                                 <!-- I don't have this -->
-                                <button class="btn-icon substitute-btn"
-                                        title="I don't have this"
-                                        @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
-                                    🔄 I don't have this
-                                </button>
+                                @if (ingredientsWithSubstitutes.Contains(i.IngredientId))
+                                {
+                                    <button class="btn-icon substitute-btn"
+                                            title="I don't have this"
+                                            @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
+                                        🔄 I don't have this
+                                    </button>
+                                }
                             </div>
 
                             <!-- Substitute panel -->
@@ -104,9 +120,12 @@ else
                                             {
                                                 <p class="dish-impact">⚠️ @state.Sub.DishImpact</p>
                                             }
-                                            <button class="btn-text" @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
-                                                I don't have this either →
-                                            </button>
+                                            @if (ingredientsWithSubstitutes.Contains(i.IngredientId))
+                                            {
+                                                <button class="btn-text" @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
+                                                    I don't have this either →
+                                                </button>
+                                            }
                                         </div>
                                     }
                                     else

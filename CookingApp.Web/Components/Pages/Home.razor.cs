@@ -11,11 +11,9 @@ public partial class Home
     private List<string> selectedFlavors = [];
     private System.Timers.Timer? debounceTimer;
 
-    private async Task OnSearchInput(ChangeEventArgs e)
+    // Called by @bind:after — searchQuery is already updated by @bind at this point
+    private Task FetchSuggestionsAsync()
     {
-        searchQuery = e.Value?.ToString() ?? string.Empty;
-
-        // Debounce: wait 250ms after last keystroke before hitting the API
         debounceTimer?.Dispose();
         debounceTimer = new System.Timers.Timer(250);
         debounceTimer.Elapsed += async (_, _) =>
@@ -34,7 +32,11 @@ public partial class Home
         };
         debounceTimer.AutoReset = false;
         debounceTimer.Start();
+        return Task.CompletedTask;
     }
+
+    private void BrowseByCategory(string category) =>
+        Nav.NavigateTo($"/browse?category={Uri.EscapeDataString(category)}");
 
     private void OnKeyDown(KeyboardEventArgs e)
     {
@@ -80,8 +82,7 @@ public partial class Home
         "spicy"    => "🌶️",
         "sweet"    => "🍬",
         "sour"     => "🍋",
-        "salty"    => "🧂",
-        "bitter"   => "☕",
+"bitter"   => "☕",
         "savory"   => "🫕",
         "crispy"   => "✨",
         "aromatic" => "🌿",

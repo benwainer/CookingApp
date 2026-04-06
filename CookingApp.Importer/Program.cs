@@ -12,6 +12,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Dapper;
 using Npgsql;
 
@@ -20,6 +21,25 @@ var ConnectionString =
     ?? "Host=localhost;Port=5432;Database=cookingapp;Username=postgres;Password=";
 
 const string ApiBase = "https://www.themealdb.com/api/json/v1/1";
+
+// ── Instruction cleaner ────────────────────────────────────────────────────────
+// TheMealDB returns instructions like: "STEP 1\r\n\r\ntext\r\nSTEP 2\r\n\r\ntext"
+// This strips the STEP headers, removes blank lines, and re-numbers each line.
+static string CleanInstructions(string raw)
+{
+    if (string.IsNullOrWhiteSpace(raw)) return raw;
+
+    var lines = raw
+        .Replace("\r\n", "\n")
+        .Replace("\r", "\n")
+        .Split('\n')
+        .Select(l => l.Trim())
+        .Where(l => !string.IsNullOrWhiteSpace(l))
+        .Where(l => !Regex.IsMatch(l, @"^STEP\s+\d+:?\s*$", RegexOptions.IgnoreCase))
+        .ToList();
+
+    return string.Join("\n", lines.Select((l, i) => $"{i + 1}. {l}"));
+}
 
 // ── Category mapping: MealDB category → app category ──────────────────────────
 static string MapCategory(string mealDbCategory) => mealDbCategory switch
@@ -67,6 +87,32 @@ http.DefaultRequestHeaders.Add("User-Agent", "CookingApp-Importer/1.0");
 
 await using var conn = new NpgsqlConnection(ConnectionString);
 await conn.OpenAsync();
+
+// ── --cleanup mode: fix instructions on all existing recipes ──────────────────
+if (args.Length > 0 && args[0] == "--cleanup")
+{
+    Console.WriteLine("Cleaning up instructions for all existing recipes...\n");
+
+    var recipes = (await conn.QueryAsync<(int Id, string Instructions)>(
+        """SELECT "Id", "Instructions" FROM "Recipes" """)).ToList();
+
+    Console.WriteLine($"Found {recipes.Count} recipes to process.");
+
+    int updated = 0, unchanged = 0;
+    foreach (var (id, raw) in recipes)
+    {
+        var cleaned = CleanInstructions(raw);
+        if (cleaned == raw) { unchanged++; continue; }
+
+        await conn.ExecuteAsync(
+            """UPDATE "Recipes" SET "Instructions" = @Instructions WHERE "Id" = @Id""",
+            new { Instructions = cleaned, Id = id });
+        updated++;
+    }
+
+    Console.WriteLine($"\nDone. Updated: {updated}  Unchanged: {unchanged}");
+    return;
+}
 
 Console.WriteLine("Fetching categories from TheMealDB...");
 await Task.Delay(200);
@@ -132,7 +178,7 @@ foreach (var category in categories)
             }
 
             var area         = meal.GetProperty("strArea").GetString() ?? "";
-            var instructions = meal.GetProperty("strInstructions").GetString() ?? "";
+            var instructions = CleanInstructions(meal.GetProperty("strInstructions").GetString() ?? "");
             var imageUrl     = meal.GetProperty("strMealThumb").GetString() ?? "";
             var appCategory  = MapCategory(category);
             var flavorTags   = MapFlavorTags(area, appCategory);
