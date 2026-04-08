@@ -4,7 +4,7 @@
 @inject AuthStateService Auth
 @inject NavigationManager Nav
 
-<PageTitle>Saved Recipes</PageTitle>
+<PageTitle>Saved Recipes — Munch</PageTitle>
 
 @if (!Auth.IsLoggedIn)
 {
@@ -13,17 +13,36 @@
 }
 
 <div class="page-header">
-    <h1>❤️ Saved Recipes</h1>
+    <h1><span aria-hidden="true">❤️</span> Saved Recipes</h1>
+    @if (!isLoading && recipes.Count > 0)
+    {
+        <p>@recipes.Count saved recipe@(recipes.Count == 1 ? "" : "s")</p>
+    }
 </div>
+
+@if (!string.IsNullOrEmpty(toastMessage))
+{
+    <div class="toast-container" aria-live="polite" aria-atomic="true">
+        <div class="toast success" role="status">@toastMessage</div>
+    </div>
+}
 
 @if (isLoading)
 {
-    <p>Loading…</p>
+    <div class="loading-grid" aria-busy="true" aria-label="Loading saved recipes">
+        @for (int i = 0; i < 6; i++)
+        {
+            <div class="recipe-card skeleton" aria-hidden="true"></div>
+        }
+    </div>
 }
 else if (recipes.Count == 0)
 {
-    <div class="empty-state">
-        <p>You haven't saved any recipes yet.</p>
+    <div class="empty-state" role="status">
+        <span class="empty-icon" aria-hidden="true">🤍</span>
+        <h2>No saved recipes yet</h2>
+        <p>Recipes you save will appear here.</p>
+        <p>Start exploring and hit <strong>Save Recipe</strong> on anything you love.</p>
         <a href="/browse" class="btn-primary">Browse recipes →</a>
     </div>
 }
@@ -33,15 +52,55 @@ else
         @foreach (var r in recipes)
         {
             var recipe = r;
-            <div class="recipe-card" @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}")'>
-                <div class="recipe-card-img-placeholder">🍴</div>
+            <div class="recipe-card saved-card"
+                 tabindex="0"
+                 role="article"
+                 aria-label="@recipe.Name, @recipe.Country, @recipe.TotalTimeMinutes minutes">
+                <div class="recipe-card-img" @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}")'
+                     style="cursor:pointer">
+                    @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+                    {
+                        <img src="@recipe.ImageUrl" alt="@recipe.Name" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="recipe-card-img-placeholder" aria-hidden="true">🍴</div>
+                    }
+                </div>
                 <div class="recipe-card-body">
-                    <h3>@recipe.Name</h3>
+                    <h3 @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}")' style="cursor:pointer">@recipe.Name</h3>
                     <div class="recipe-meta">
-                        <span>🌍 @recipe.Country</span>
-                        <span>⏱️ @recipe.TotalTimeMinutes min</span>
+                        <span><span aria-hidden="true">🌍</span> @recipe.Country</span>
+                        <span><span aria-hidden="true">⏱️</span> @recipe.TotalTimeMinutes min</span>
                     </div>
                     <span class="category-badge">@recipe.Category</span>
+
+                    <!-- Personal notes -->
+                    <div class="recipe-notes">
+                        @if (editingNotesId == recipe.Id)
+                        {
+                            <textarea class="notes-input"
+                                      @bind="editingNotesText"
+                                      placeholder="Add a personal note…"
+                                      rows="3"
+                                      aria-label="Notes for @recipe.Name"></textarea>
+                            <div class="notes-actions">
+                                <button class="btn-primary btn-sm" @onclick="() => SaveNotes(recipe.Id)">Save</button>
+                                <button class="btn-secondary btn-sm" @onclick="CancelNotes">Cancel</button>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (!string.IsNullOrEmpty(recipe.Notes))
+                            {
+                                <p class="notes-text">📝 @recipe.Notes</p>
+                            }
+                            <button class="btn-text notes-btn"
+                                    @onclick="() => StartEditNotes(recipe.Id, recipe.Notes)">
+                                @(string.IsNullOrEmpty(recipe.Notes) ? "Add note" : "Edit note")
+                            </button>
+                        }
+                    </div>
                 </div>
             </div>
         }
@@ -49,12 +108,59 @@ else
 }
 
 @code {
-    private List<CookingApp.Core.DTOs.RecipeSummaryDto> recipes = [];
+    private List<CookingApp.Core.DTOs.SavedRecipeSummaryDto> recipes = [];
     private bool isLoading = true;
+    private int? editingNotesId;
+    private string editingNotesText = string.Empty;
+    private string? toastMessage;
+    private System.Timers.Timer? toastTimer;
 
     protected override async Task OnInitializedAsync()
     {
         recipes = await Api.GetSavedRecipesAsync();
         isLoading = false;
+    }
+
+    private void StartEditNotes(int recipeId, string? currentNotes)
+    {
+        editingNotesId = recipeId;
+        editingNotesText = currentNotes ?? string.Empty;
+    }
+
+    private void CancelNotes()
+    {
+        editingNotesId = null;
+        editingNotesText = string.Empty;
+    }
+
+    private async Task SaveNotes(int recipeId)
+    {
+        await Api.UpdateRecipeNotesAsync(recipeId, editingNotesText);
+
+        // Update local state
+        var idx = recipes.FindIndex(r => r.Id == recipeId);
+        if (idx >= 0)
+            recipes[idx] = recipes[idx] with { Notes = editingNotesText };
+
+        editingNotesId = null;
+        editingNotesText = string.Empty;
+        ShowToast("Note saved!");
+    }
+
+    private void ShowToast(string message)
+    {
+        toastTimer?.Dispose();
+        toastMessage = message;
+        StateHasChanged();
+
+        toastTimer = new System.Timers.Timer(3000);
+        toastTimer.Elapsed += async (_, _) =>
+        {
+            toastTimer?.Dispose();
+            toastMessage = null;
+            await InvokeAsync(StateHasChanged);
+        };
+        toastTimer.AutoReset = false;
+        toastTimer.Start();
     }
 }

@@ -45,12 +45,16 @@
         try
         {
             var result = await Api.LoginAsync(new CookingApp.Core.DTOs.LoginRequest(email, password));
-            Auth.Login(result.Token, result.UserId, result.DisplayName);
+            await Auth.LoginAsync(result.Token, result.UserId, result.DisplayName);
             Nav.NavigateTo("/");
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            error = ex.Message;
+            error = "Incorrect email or password. Please try again.";
+        }
+        catch
+        {
+            error = "Something went wrong. Please try again.";
         }
         isLoading = false;
     }

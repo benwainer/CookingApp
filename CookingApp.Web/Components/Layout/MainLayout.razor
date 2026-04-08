@@ -2,42 +2,66 @@
 @inject AuthStateService Auth
 @inject NavigationManager Nav
 
+<!-- Hamburger button (visible on mobile only) -->
+<button class="hamburger-btn" @onclick="ToggleMobileNav" aria-label="Toggle navigation menu">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<!-- Sidebar overlay (mobile tap-to-close) -->
+@if (isMobileNavOpen)
+{
+    <div class="sidebar-overlay" @onclick="CloseMobileNav" aria-hidden="true"></div>
+}
+
 <div class="app-shell">
-    <nav class="sidebar">
+    <nav class="sidebar @(isMobileNavOpen ? "open" : "")" aria-label="Main navigation">
         <div class="sidebar-logo">
-            <span class="logo-icon">🍳</span>
-            <span class="logo-text">CookingApp</span>
+            <span class="logo-icon" aria-hidden="true">🍳</span>
+            <span class="logo-text">Munch</span>
         </div>
 
-        <ul class="nav-links">
-            <li><NavLink href="/" Match="NavLinkMatch.All">🏠 Home</NavLink></li>
-            <li><NavLink href="/browse">🌍 Browse</NavLink></li>
-            <li><NavLink href="/search">🔍 Search</NavLink></li>
+        <ul class="nav-links" role="list">
+            <li><NavLink href="/" Match="NavLinkMatch.All" @onclick="CloseMobileNav"><span aria-hidden="true">🏠</span> Home</NavLink></li>
+            <li><NavLink href="/browse" @onclick="CloseMobileNav"><span aria-hidden="true">🌍</span> Browse</NavLink></li>
             @if (Auth.IsLoggedIn)
             {
-                <li><NavLink href="/saved">❤️ Saved</NavLink></li>
-                <li><NavLink href="/preferences">⚙️ Preferences</NavLink></li>
+                <li><NavLink href="/saved" @onclick="CloseMobileNav"><span aria-hidden="true">❤️</span> Saved</NavLink></li>
+                <li><NavLink href="/preferences" @onclick="CloseMobileNav"><span aria-hidden="true">⚙️</span> Preferences</NavLink></li>
                 <li>
-                    <button class="nav-btn-link" @onclick="Logout">🚪 Log out</button>
+                    <button class="nav-btn-link" @onclick="Logout" aria-label="Log out">
+                        <span aria-hidden="true">🚪</span> Log out
+                    </button>
                 </li>
             }
             else
             {
-                <li><NavLink href="/login">🔑 Login</NavLink></li>
-                <li><NavLink href="/register">✨ Register</NavLink></li>
+                <li><NavLink href="/login" @onclick="CloseMobileNav"><span aria-hidden="true">🔑</span> Login</NavLink></li>
+                <li><NavLink href="/register" @onclick="CloseMobileNav"><span aria-hidden="true">✨</span> Register</NavLink></li>
             }
         </ul>
 
         <div class="sidebar-footer">
             @if (Auth.IsLoggedIn)
             {
-                <span>👤 @Auth.DisplayName</span>
+                <span aria-label="Logged in as @Auth.DisplayName"><span aria-hidden="true">👤</span> @Auth.DisplayName</span>
             }
         </div>
     </nav>
 
     <main class="main-content">
-        @Body
+        <ErrorBoundary>
+            <ChildContent>@Body</ChildContent>
+            <ErrorContent Context="ex">
+                <div class="empty-state" role="alert">
+                    <span class="empty-icon" aria-hidden="true">⚠️</span>
+                    <h2>Something went wrong</h2>
+                    <p>@ex.Message</p>
+                    <a href="/" class="btn-primary">Go home →</a>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
     </main>
 
     <!-- Floating AI Assistant button -->

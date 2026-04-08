@@ -29,6 +29,18 @@ public class Recipe
     public ICollection<UserSavedRecipe> SavedByUsers { get; set; } = new List<UserSavedRecipe>();
 }
 
+// ─── CanonicalIngredient ──────────────────────────────────────────────────────
+
+public class CanonicalIngredient
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;       // e.g. "Basil", "Olive Oil"
+    public string Category { get; set; } = string.Empty;   // protein|seafood|legume|vegetable|grain|herb|spice…
+
+    // Navigation
+    public ICollection<Ingredient> Ingredients { get; set; } = new List<Ingredient>();
+}
+
 // ─── Ingredient ───────────────────────────────────────────────────────────────
 
 public class Ingredient
@@ -37,6 +49,10 @@ public class Ingredient
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;   // herb|protein|vegetable|spice|dairy|grain…
     public string? Notes { get; set; }
+
+    // Optional link to a canonical ingredient group
+    public int? CanonicalIngredientId { get; set; }
+    public CanonicalIngredient? CanonicalIngredient { get; set; }
 
     // Navigation
     public ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
@@ -119,8 +135,8 @@ public class UserDislikedIngredient
     public int UserPreferencesId { get; set; }
     public UserPreferences UserPreferences { get; set; } = null!;
 
-    public int IngredientId { get; set; }
-    public Ingredient Ingredient { get; set; } = null!;
+    public int CanonicalIngredientId { get; set; }
+    public CanonicalIngredient CanonicalIngredient { get; set; } = null!;
 }
 
 // ─── UserSavedRecipe ──────────────────────────────────────────────────────────
@@ -134,4 +150,5 @@ public class UserSavedRecipe
     public Recipe Recipe { get; set; } = null!;
 
     public DateTime SavedAt { get; set; } = DateTime.UtcNow;
+    public string? Notes { get; set; }
 }

@@ -3,29 +3,39 @@
 @inject ApiClient Api
 @inject NavigationManager Nav
 
-<PageTitle>CookingApp — Discover Recipes</PageTitle>
+<PageTitle>Munch — Discover Recipes</PageTitle>
 
 <div class="home-hero">
     <h1>What are you cooking today?</h1>
     <p class="hero-sub">Search by country, ingredient, flavour, or category.</p>
 
     <!-- ── Autocomplete Search Bar ───────────────────────────────────────── -->
-    <div class="search-bar-wrapper">
+    <div class="search-bar-wrapper" role="search">
         <input class="search-input"
                placeholder="Try &quot;India&quot;, &quot;Chicken Breast&quot;, &quot;Spicy&quot;…"
                @bind="searchQuery"
                @bind:event="oninput"
                @bind:after="FetchSuggestionsAsync"
-               @onkeydown="OnKeyDown" />
-        <button class="search-btn" @onclick="DoSearch">Search</button>
+               @onkeydown="OnKeyDown"
+               aria-label="Search recipes"
+               aria-autocomplete="list"
+               aria-controls="search-suggestions"
+               aria-expanded="@(suggestions.Count > 0 ? "true" : "false")" />
+        <button class="search-btn" @onclick="DoSearch" aria-label="Search">Search</button>
 
         @if (suggestions.Count > 0)
         {
-            <ul class="autocomplete-dropdown">
+            <ul class="autocomplete-dropdown"
+                id="search-suggestions"
+                role="listbox"
+                aria-label="Search suggestions">
                 @foreach (var s in suggestions)
                 {
-                    var item = s; // capture for lambda
-                    <li @onclick="() => SelectSuggestion(item)">
+                    var item = s;
+                    <li role="option"
+                        tabindex="0"
+                        @onclick="() => SelectSuggestion(item)"
+                        @onkeydown="@(e => { if (e.Key == "Enter") SelectSuggestion(item); })">
                         <span class="suggestion-type">@item.Type</span>
                         @item.Value
                     </li>
@@ -37,36 +47,53 @@
     <!-- ── Browse Tiles ──────────────────────────────────────────────────── -->
     <div class="browse-section">
         <h2>Browse by</h2>
-        <div class="browse-tiles">
-            <div class="browse-tile" @onclick='() => BrowseByCategory("Breakfast")'>
-                <span class="tile-icon">🌅</span>
+        <div class="browse-tiles" role="list">
+            <div class="browse-tile" role="listitem" tabindex="0"
+                 @onclick='() => BrowseByCategory("Breakfast")'
+                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") BrowseByCategory("Breakfast"); }'
+                 aria-label="Browse Breakfast recipes">
+                <span class="tile-icon" aria-hidden="true">🌅</span>
                 <span>Breakfast</span>
             </div>
-            <div class="browse-tile" @onclick='() => BrowseByCategory("Snack")'>
-                <span class="tile-icon">🥨</span>
+            <div class="browse-tile" role="listitem" tabindex="0"
+                 @onclick='() => BrowseByCategory("Snack")'
+                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") BrowseByCategory("Snack"); }'
+                 aria-label="Browse Snack recipes">
+                <span class="tile-icon" aria-hidden="true">🥨</span>
                 <span>Snack</span>
             </div>
-            <div class="browse-tile" @onclick='() => BrowseByCategory("Starter")'>
-                <span class="tile-icon">🥗</span>
+            <div class="browse-tile" role="listitem" tabindex="0"
+                 @onclick='() => BrowseByCategory("Starter")'
+                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") BrowseByCategory("Starter"); }'
+                 aria-label="Browse Starter recipes">
+                <span class="tile-icon" aria-hidden="true">🥗</span>
                 <span>Starter</span>
             </div>
-            <div class="browse-tile" @onclick='() => BrowseByCategory("Main")'>
-                <span class="tile-icon">🍽️</span>
+            <div class="browse-tile" role="listitem" tabindex="0"
+                 @onclick='() => BrowseByCategory("Main")'
+                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") BrowseByCategory("Main"); }'
+                 aria-label="Browse Main Course recipes">
+                <span class="tile-icon" aria-hidden="true">🍽️</span>
                 <span>Main Course</span>
             </div>
-            <div class="browse-tile" @onclick='() => BrowseByCategory("Dessert")'>
-                <span class="tile-icon">🍰</span>
+            <div class="browse-tile" role="listitem" tabindex="0"
+                 @onclick='() => BrowseByCategory("Dessert")'
+                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") BrowseByCategory("Dessert"); }'
+                 aria-label="Browse Dessert recipes">
+                <span class="tile-icon" aria-hidden="true">🍰</span>
                 <span>Dessert</span>
             </div>
         </div>
 
         <h2>Browse by flavour</h2>
-        <div class="flavor-chips">
-            @foreach (var flavor in new[] { "spicy", "sweet", "sour", "bitter", "savory", "crispy", "aromatic" })
+        <div class="flavor-chips" role="group" aria-label="Filter by flavour">
+            @foreach (var flavor in new[] { "spicy", "sweet", "savory", "crispy", "aromatic" })
             {
                 var f = flavor;
                 <button class="flavor-chip @(selectedFlavors.Contains(f) ? "active" : "")"
-                        @onclick="() => ToggleFlavor(f)">
+                        @onclick="() => ToggleFlavor(f)"
+                        aria-pressed="@(selectedFlavors.Contains(f) ? "true" : "false")"
+                        aria-label="@f flavour filter">
                     @FlavorEmoji(f) @f
                 </button>
             }

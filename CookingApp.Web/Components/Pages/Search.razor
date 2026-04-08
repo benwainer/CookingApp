@@ -3,26 +3,40 @@
 @inject ApiClient Api
 @inject NavigationManager Nav
 
-<PageTitle>Search Results</PageTitle>
+<PageTitle>Search Results — Munch</PageTitle>
 
 <div class="page-header">
     <h1>Search Results</h1>
-    @if (!string.IsNullOrEmpty(Q))
-    {
-        <p>Showing results for "<strong>@Q</strong>"</p>
-    }
 </div>
+
+<!-- ── Re-search bar ─────────────────────────────────────────────────────── -->
+<div class="search-bar-wrapper search-bar-inline" role="search">
+    <input type="search"
+           @bind="searchQuery"
+           @bind:event="oninput"
+           @onkeydown="@(e => { if (e.Key == "Enter") DoSearch(); })"
+           placeholder="Search recipes, countries, ingredients…"
+           aria-label="Search recipes" />
+    <button class="search-btn" @onclick="DoSearch" aria-label="Search">Search</button>
+</div>
+
+@if (!string.IsNullOrEmpty(Q))
+{
+    <p class="search-result-label">Showing results for "<strong>@Q</strong>"</p>
+}
 
 @if (isLoading)
 {
-    <div class="loading-grid">
-        @for (int i = 0; i < 6; i++) { <div class="recipe-card skeleton"></div> }
+    <div class="loading-grid" aria-busy="true" aria-label="Loading results">
+        @for (int i = 0; i < 6; i++) { <div class="recipe-card skeleton" aria-hidden="true"></div> }
     </div>
 }
 else if (recipes.Count == 0)
 {
-    <div class="empty-state">
-        <p>No recipes found for "@Q".</p>
+    <div class="empty-state" role="status">
+        <span class="empty-icon" aria-hidden="true">🔍</span>
+        <h2>No recipes found</h2>
+        <p>Try a different search or browse all recipes.</p>
         <a href="/browse" class="btn-primary">Browse all recipes →</a>
     </div>
 }
@@ -32,18 +46,32 @@ else
         @foreach (var r in recipes)
         {
             var recipe = r;
-            <div class="recipe-card" @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}")'>
-                <div class="recipe-card-img-placeholder">🍴</div>
+            <div class="recipe-card"
+                 @onclick='() => Nav.NavigateTo($"/recipe/{recipe.Id}?returnUrl={Uri.EscapeDataString(Nav.Uri)}")'
+                 tabindex="0"
+                 role="article"
+                 aria-label="@recipe.Name, @recipe.Country, @recipe.TotalTimeMinutes minutes"
+                 @onkeydown='@(e => { if (e.Key == "Enter") Nav.NavigateTo($"/recipe/{recipe.Id}?returnUrl={Uri.EscapeDataString(Nav.Uri)}"); })'>
+                <div class="recipe-card-img">
+                    @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+                    {
+                        <img src="@recipe.ImageUrl" alt="@recipe.Name" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="recipe-card-img-placeholder" aria-hidden="true">🍴</div>
+                    }
+                </div>
                 <div class="recipe-card-body">
                     <h3>@recipe.Name</h3>
                     <div class="recipe-meta">
-                        <span>🌍 @recipe.Country</span>
-                        <span>⏱️ @recipe.TotalTimeMinutes min</span>
+                        <span><span aria-hidden="true">🌍</span> @recipe.Country</span>
+                        <span><span aria-hidden="true">⏱️</span> @recipe.TotalTimeMinutes min</span>
                     </div>
                     <div class="flavor-chips small">
                         @foreach (var tag in recipe.FlavorTags.Split(',', StringSplitOptions.RemoveEmptyEntries))
                         {
-                            <span class="flavor-chip">@tag</span>
+                            <span class="flavor-chip">@tag.Trim()</span>
                         }
                     </div>
                     <span class="category-badge">@recipe.Category</span>
@@ -56,14 +84,22 @@ else
 @code {
     [SupplyParameterFromQuery] public string? Q { get; set; }
 
+    private string searchQuery = string.Empty;
     private List<CookingApp.Core.DTOs.RecipeSummaryDto> recipes = [];
     private bool isLoading = true;
 
     protected override async Task OnParametersSetAsync()
     {
+        searchQuery = Q ?? string.Empty;
         isLoading = true;
         recipes = await Api.SearchRecipesAsync(
             new CookingApp.Core.DTOs.RecipeSearchRequest(Q, null, null, null, null));
         isLoading = false;
+    }
+
+    private void DoSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+            Nav.NavigateTo($"/search?q={Uri.EscapeDataString(searchQuery.Trim())}");
     }
 }

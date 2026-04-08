@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using CookingApp.Core.DTOs;
 using CookingApp.Core.Interfaces;
+using CookingApp.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CookingApp.API.Controllers;
 
@@ -10,7 +12,7 @@ namespace CookingApp.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class RecipesController(IRecipeService recipeService) : ControllerBase
+public class RecipesController(IRecipeService recipeService, AppDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] RecipeSearchRequest request)
@@ -46,6 +48,31 @@ public class RecipesController(IRecipeService recipeService) : ControllerBase
     {
         var ingredients = await recipeService.GetAllMainIngredientsAsync();
         return Ok(ingredients);
+    }
+
+    [HttpGet("ingredients-by-category")]
+    public async Task<IActionResult> GetIngredientsByCategory()
+    {
+        var result = await recipeService.GetIngredientsByCategoryAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("canonical-ingredients")]
+    public async Task<IActionResult> GetCanonicalIngredients()
+    {
+        var categoryOrder = new[] { "protein", "seafood", "legume", "vegetable", "grain" };
+        var raw = await db.CanonicalIngredients
+            .Where(c => categoryOrder.Contains(c.Category))
+            .OrderBy(c => c.Name)
+            .GroupBy(c => c.Category)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(c => c.Name).OrderBy(n => n).ToList());
+
+        // Return in fixed category order, not DB/alphabetical order
+        var result = categoryOrder
+            .Where(raw.ContainsKey)
+            .ToDictionary(cat => cat, cat => raw[cat]);
+
+        return Ok(result);
     }
 
     private int? GetUserIdOrNull()
@@ -144,6 +171,13 @@ public class UsersController(IUserService userService) : ControllerBase
         return Ok(recipes);
     }
 
+    [HttpGet("saved-recipes/{recipeId:int}")]
+    public async Task<IActionResult> IsRecipeSaved(int recipeId)
+    {
+        var saved = await userService.IsRecipeSavedAsync(GetUserId(), recipeId);
+        return Ok(saved);
+    }
+
     [HttpPost("saved-recipes/{recipeId:int}")]
     public async Task<IActionResult> SaveRecipe(int recipeId)
     {
@@ -158,6 +192,34 @@ public class UsersController(IUserService userService) : ControllerBase
         return NoContent();
     }
 
+    [HttpPatch("saved-recipes/{recipeId:int}/notes")]
+    public async Task<IActionResult> UpdateRecipeNotes(int recipeId, UpdateRecipeNotesRequest request)
+    {
+        await userService.UpdateRecipeNotesAsync(GetUserId(), recipeId, request.Notes);
+        return NoContent();
+    }
+
+    [HttpGet("disliked-ingredients")]
+    public async Task<IActionResult> GetDislikedIngredients()
+    {
+        var result = await userService.GetDislikedIngredientsAsync(GetUserId());
+        return Ok(result);
+    }
+
+    [HttpPost("dislike-ingredient/{canonicalIngredientId:int}")]
+    public async Task<IActionResult> DislikeIngredient(int canonicalIngredientId)
+    {
+        await userService.DislikeIngredientAsync(GetUserId(), canonicalIngredientId);
+        return NoContent();
+    }
+
+    [HttpDelete("dislike-ingredient/{canonicalIngredientId:int}")]
+    public async Task<IActionResult> UnDislikeIngredient(int canonicalIngredientId)
+    {
+        await userService.UnDislikeIngredientAsync(GetUserId(), canonicalIngredientId);
+        return NoContent();
+    }
+
     private int GetUserId() =>
         int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 }
@@ -166,6 +228,7 @@ public class UsersController(IUserService userService) : ControllerBase
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AiController(IAiAssistantService aiService) : ControllerBase
 {
     [HttpPost("chat")]

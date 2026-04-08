@@ -12,6 +12,7 @@ public interface IRecipeRepository
     Task<List<AutocompleteResult>> AutocompleteAsync(string prefix);
     Task<List<string>> GetAllCountriesAsync();
     Task<List<string>> GetAllMainIngredientsAsync();
+    Task<Dictionary<string, List<string>>> GetIngredientsByCategoryAsync();
 }
 
 // ─── Substitute ───────────────────────────────────────────────────────────────
@@ -33,7 +34,12 @@ public interface IUserRepository
     Task UpsertPreferencesAsync(int userId, UserPreferencesDto dto);
     Task SaveRecipeAsync(int userId, int recipeId);
     Task UnsaveRecipeAsync(int userId, int recipeId);
-    Task<List<RecipeSummaryDto>> GetSavedRecipesAsync(int userId);
+    Task<bool> IsRecipeSavedAsync(int userId, int recipeId);
+    Task<List<SavedRecipeSummaryDto>> GetSavedRecipesAsync(int userId);
+    Task UpdateRecipeNotesAsync(int userId, int recipeId, string? notes);
+    Task DislikeIngredientAsync(int userId, int canonicalIngredientId);
+    Task UnDislikeIngredientAsync(int userId, int canonicalIngredientId);
+    Task<List<DislikedIngredientDto>> GetDislikedIngredientsAsync(int userId);
 }
 
 // ─── Services ─────────────────────────────────────────────────────────────────
@@ -45,6 +51,7 @@ public interface IRecipeService
     Task<List<AutocompleteResult>> AutocompleteAsync(string prefix);
     Task<List<string>> GetAllCountriesAsync();
     Task<List<string>> GetAllMainIngredientsAsync();
+    Task<Dictionary<string, List<string>>> GetIngredientsByCategoryAsync();
 }
 
 public interface ISubstituteService
@@ -65,7 +72,12 @@ public interface IUserService
     Task SavePreferencesAsync(int userId, UserPreferencesDto dto);
     Task SaveRecipeAsync(int userId, int recipeId);
     Task UnsaveRecipeAsync(int userId, int recipeId);
-    Task<List<RecipeSummaryDto>> GetSavedRecipesAsync(int userId);
+    Task<bool> IsRecipeSavedAsync(int userId, int recipeId);
+    Task<List<SavedRecipeSummaryDto>> GetSavedRecipesAsync(int userId);
+    Task UpdateRecipeNotesAsync(int userId, int recipeId, string? notes);
+    Task DislikeIngredientAsync(int userId, int canonicalIngredientId);
+    Task UnDislikeIngredientAsync(int userId, int canonicalIngredientId);
+    Task<List<DislikedIngredientDto>> GetDislikedIngredientsAsync(int userId);
 }
 
 public interface IAiAssistantService

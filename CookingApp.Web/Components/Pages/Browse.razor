@@ -2,8 +2,10 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject ApiClient Api
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject AuthStateService Auth
 
-<PageTitle>Browse Recipes</PageTitle>
+<PageTitle>Browse Recipes — Munch</PageTitle>
 
 <div class="page-header">
     <h1>Browse Recipes</h1>
@@ -11,8 +13,8 @@
 </div>
 
 <!-- ── Filter Bar ─────────────────────────────────────────────────────────── -->
-<div class="filter-bar">
-    <select @bind="filterCategory" @bind:after="LoadRecipes">
+<div class="filter-bar" role="group" aria-label="Recipe filters">
+    <select @bind="filterCategory" @bind:after="LoadRecipes" aria-label="Filter by category">
         <option value="">All categories</option>
         @foreach (var cat in categories)
         {
@@ -20,7 +22,7 @@
         }
     </select>
 
-    <select @bind="filterCountry" @bind:after="LoadRecipes">
+    <select @bind="filterCountry" @bind:after="LoadRecipes" aria-label="Filter by country">
         <option value="">All countries</option>
         @foreach (var c in countries)
         {
@@ -28,60 +30,129 @@
         }
     </select>
 
-    <select @bind="filterIngredient" @bind:after="LoadRecipes">
+    <select @bind="filterIngredient" @bind:after="LoadRecipes" aria-label="Filter by ingredient">
         <option value="">All ingredients</option>
-        @foreach (var i in ingredients)
+        @foreach (var category in new[] { "protein", "seafood", "legume", "vegetable", "grain" })
         {
-            <option value="@i">@i</option>
+            @if (ingredientsByCategory.ContainsKey(category))
+            {
+                <optgroup label="@(char.ToUpper(category[0]) + category[1..])">
+                    @foreach (var ing in ingredientsByCategory[category].OrderBy(i => i))
+                    {
+                        <option value="@ing">@ing</option>
+                    }
+                </optgroup>
+            }
         }
     </select>
 
-    <button class="btn-secondary" @onclick="ClearFilters">Clear</button>
+    <select @bind="sortBy" aria-label="Sort recipes">
+        <option value="default">Default order</option>
+        <option value="quickest">Quickest first</option>
+        <option value="name-asc">Name A–Z</option>
+        <option value="name-desc">Name Z–A</option>
+    </select>
+
+    <button class="btn-secondary" @onclick="ClearFilters">Clear all</button>
 </div>
+
+<!-- ── Active filter pills ───────────────────────────────────────────────── -->
+@if (!string.IsNullOrEmpty(filterCategory) || !string.IsNullOrEmpty(filterCountry) || !string.IsNullOrEmpty(filterIngredient))
+{
+    <div class="active-filters" role="status" aria-label="Active filters">
+        <span class="active-filters-label">Active filters:</span>
+        @if (!string.IsNullOrEmpty(filterCategory))
+        {
+            <span class="filter-pill">
+                @filterCategory
+                <button @onclick='() => ClearFilter("category")' aria-label="Remove @filterCategory filter">✕</button>
+            </span>
+        }
+        @if (!string.IsNullOrEmpty(filterCountry))
+        {
+            <span class="filter-pill">
+                @filterCountry
+                <button @onclick='() => ClearFilter("country")' aria-label="Remove @filterCountry filter">✕</button>
+            </span>
+        }
+        @if (!string.IsNullOrEmpty(filterIngredient))
+        {
+            <span class="filter-pill">
+                @filterIngredient
+                <button @onclick='() => ClearFilter("ingredient")' aria-label="Remove @filterIngredient filter">✕</button>
+            </span>
+        }
+    </div>
+}
+
+<!-- ── Disliked ingredient notice ────────────────────────────────────────── -->
+@if (Auth.IsLoggedIn && dislikedIngredients.Count > 0)
+{
+    <div class="active-filters disliked-filters" role="status" aria-label="Disliked ingredients being filtered out">
+        <span class="active-filters-label">Hiding disliked:</span>
+        @foreach (var d in dislikedIngredients)
+        {
+            var disliked = d;
+            <span class="filter-pill disliked-pill">
+                👎 @disliked.Name
+                <button @onclick="() => RemoveDislike(disliked.CanonicalIngredientId)"
+                        aria-label="Stop disliking @disliked.Name">✕</button>
+            </span>
+        }
+    </div>
+}
 
 <!-- ── Recipe Grid ────────────────────────────────────────────────────────── -->
 @if (isLoading)
 {
-    <div class="loading-grid">
+    <div class="loading-grid" aria-busy="true" aria-label="Loading recipes">
         @for (int i = 0; i < 8; i++)
         {
-            <div class="recipe-card skeleton"></div>
+            <div class="recipe-card skeleton" aria-hidden="true"></div>
         }
     </div>
 }
 else if (recipes.Count == 0)
 {
-    <div class="empty-state">
-        <p>No recipes match your filters. Try removing some!</p>
+    <div class="empty-state" role="status">
+        <span class="empty-icon" aria-hidden="true">🍽️</span>
+        <h2>No recipes found</h2>
+        <p>Try removing some filters to see more results.</p>
+        <button class="btn-secondary" @onclick="ClearFilters">Clear all filters</button>
     </div>
 }
 else
 {
     <div class="recipe-grid">
-        @foreach (var recipe in recipes)
+        @foreach (var recipe in SortedRecipes)
         {
             var r = recipe;
-            <div class="recipe-card" @onclick="() => OpenRecipe(r.Id)">
+            <div class="recipe-card"
+                 @onclick="() => OpenRecipe(r.Id)"
+                 tabindex="0"
+                 role="article"
+                 aria-label="@r.Name, @r.Country, @r.TotalTimeMinutes minutes"
+                 @onkeydown="@(e => { if (e.Key == "Enter") OpenRecipe(r.Id); })">
                 <div class="recipe-card-img">
                     @if (!string.IsNullOrEmpty(r.ImageUrl))
                     {
-                        <img src="@r.ImageUrl" alt="@r.Name" />
+                        <img src="@r.ImageUrl" alt="@r.Name" loading="lazy" />
                     }
                     else
                     {
-                        <div class="recipe-card-img-placeholder">🍴</div>
+                        <div class="recipe-card-img-placeholder" aria-hidden="true">🍴</div>
                     }
                 </div>
                 <div class="recipe-card-body">
                     <h3>@r.Name</h3>
                     <div class="recipe-meta">
-                        <span>🌍 @r.Country</span>
-                        <span>⏱️ @r.TotalTimeMinutes min</span>
+                        <span><span aria-hidden="true">🌍</span> @r.Country</span>
+                        <span><span aria-hidden="true">⏱️</span> @r.TotalTimeMinutes min</span>
                     </div>
-                    <div class="flavor-chips small">
+                    <div class="flavor-chips small" aria-label="Flavour tags">
                         @foreach (var tag in r.FlavorTags.Split(',', StringSplitOptions.RemoveEmptyEntries))
                         {
-                            <span class="flavor-chip">@tag</span>
+                            <span class="flavor-chip">@tag.Trim()</span>
                         }
                     </div>
                     <span class="category-badge">@r.Category</span>
@@ -89,4 +160,13 @@ else
             </div>
         }
     </div>
+
+    @if (hasMore)
+    {
+        <div class="load-more-row">
+            <button class="btn-secondary" @onclick="LoadMore" disabled="@isLoadingMore">
+                @(isLoadingMore ? "Loading…" : "Load more")
+            </button>
+        </div>
+    }
 }

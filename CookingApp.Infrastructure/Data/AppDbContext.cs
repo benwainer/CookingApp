@@ -7,6 +7,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
+    public DbSet<CanonicalIngredient> CanonicalIngredients => Set<CanonicalIngredient>();
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<IngredientSubstitute> IngredientSubstitutes => Set<IngredientSubstitute>();
     public DbSet<User> Users => Set<User>();
@@ -30,6 +31,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(i => i.RecipeIngredients)
             .HasForeignKey(ri => ri.IngredientId);
 
+        // ── CanonicalIngredient → Ingredient ─────────────────────────────────
+        b.Entity<Ingredient>()
+            .HasOne(i => i.CanonicalIngredient)
+            .WithMany(c => c.Ingredients)
+            .HasForeignKey(i => i.CanonicalIngredientId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
         // ── IngredientSubstitute ──────────────────────────────────────────────
         b.Entity<IngredientSubstitute>()
             .HasOne(s => s.OriginalIngredient)
@@ -51,7 +60,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         // ── UserDislikedIngredient composite key ──────────────────────────────
         b.Entity<UserDislikedIngredient>()
-            .HasKey(d => new { d.UserPreferencesId, d.IngredientId });
+            .HasKey(d => new { d.UserPreferencesId, d.CanonicalIngredientId });
 
         b.Entity<UserDislikedIngredient>()
             .HasOne(d => d.UserPreferences)
@@ -59,9 +68,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasForeignKey(d => d.UserPreferencesId);
 
         b.Entity<UserDislikedIngredient>()
-            .HasOne(d => d.Ingredient)
+            .HasOne(d => d.CanonicalIngredient)
             .WithMany()
-            .HasForeignKey(d => d.IngredientId);
+            .HasForeignKey(d => d.CanonicalIngredientId);
 
         // ── UserSavedRecipe composite key ─────────────────────────────────────
         b.Entity<UserSavedRecipe>()

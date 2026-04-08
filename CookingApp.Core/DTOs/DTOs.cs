@@ -36,7 +36,8 @@ public record RecipeIngredientDto(
     string IngredientName,
     string Quantity,
     bool IsOptional,
-    int SortOrder
+    int SortOrder,
+    int? CanonicalIngredientId
 );
 
 // ─── Search / Filter DTOs ─────────────────────────────────────────────────────
@@ -63,18 +64,37 @@ public record SubstituteDto(
     string? DishImpact
 );
 
+/// <summary>Saved recipe card with personal notes.</summary>
+public record SavedRecipeSummaryDto(
+    int Id,
+    string Name,
+    string Country,
+    string Category,
+    string MainIngredientName,
+    string FlavorTags,
+    int TotalTimeMinutes,
+    string ImageUrl,
+    string? Notes
+);
+
+public record UpdateRecipeNotesRequest(string? Notes);
+
 // ─── User / Auth DTOs ─────────────────────────────────────────────────────────
 
 public record RegisterRequest(string Email, string DisplayName, string Password);
+
 public record LoginRequest(string Email, string Password);
+
 public record AuthResponse(string Token, int UserId, string DisplayName);
 
 // ─── User Preferences DTOs ───────────────────────────────────────────────────
 
 public record UserPreferencesDto(
     List<string> DislikedFlavors,
-    List<int> DislikedIngredientIds
+    List<int> DislikedCanonicalIngredientIds
 );
+
+public record DislikedIngredientDto(int CanonicalIngredientId, string Name);
 
 // ─── AI Assistant DTOs ───────────────────────────────────────────────────────
 

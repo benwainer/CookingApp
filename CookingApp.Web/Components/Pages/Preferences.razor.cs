@@ -9,21 +9,37 @@ public partial class Preferences
     private List<string> dislikedFlavors = [];
     private List<IngredientOption> dislikedIngredients = [];
     private List<IngredientOption> ingredientSuggestions = [];
+    private List<SavedRecipeSummaryDto> savedRecipes = [];
     private string ingredientSearch = string.Empty;
     private bool isSaving = false;
-    private bool isSaved = false;
+    private bool isLoading = true;
+    private string? toastMessage;
+    private System.Timers.Timer? toastTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Auth.IsLoggedIn) return;
+        await Auth.InitializeAsync();
 
-        var prefs = await Api.GetPreferencesAsync();
+        if (!Auth.IsLoggedIn)
+        {
+            isLoading = false;
+            return;
+        }
+
+        var prefsTask = Api.GetPreferencesAsync();
+        var savedTask = Api.GetSavedRecipesAsync();
+        await Task.WhenAll(prefsTask, savedTask);
+
+        var prefs = await prefsTask;
         if (prefs != null)
         {
             dislikedFlavors = prefs.DislikedFlavors.ToList();
-            // Load ingredient names for the saved IDs
-            // For now we store them as-is; a full app would resolve names
+            // Preferences page uses canonical IDs for persistence but doesn't display disliked ingredients
+            // (managed via the dislike buttons on RecipeDetail instead)
         }
+
+        savedRecipes = await savedTask;
+        isLoading = false;
     }
 
     private void ToggleFlavor(string flavor)
@@ -32,7 +48,6 @@ public partial class Preferences
             dislikedFlavors.Remove(flavor);
         else
             dislikedFlavors.Add(flavor);
-        isSaved = false;
     }
 
     private async Task OnIngredientInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
@@ -58,7 +73,6 @@ public partial class Preferences
             dislikedIngredients.Add(ing);
         ingredientSearch = string.Empty;
         ingredientSuggestions = [];
-        isSaved = false;
     }
 
     private void RemoveDislikedIngredient(int id) =>
@@ -69,10 +83,27 @@ public partial class Preferences
         isSaving = true;
         await Api.SavePreferencesAsync(new UserPreferencesDto(
             dislikedFlavors,
-            dislikedIngredients.Select(i => i.IngredientId).ToList()
+            []   // canonical disliked ingredients are managed via RecipeDetail dislike buttons
         ));
         isSaving = false;
-        isSaved = true;
+        ShowToast("✅ Preferences saved!");
+    }
+
+    private void ShowToast(string message)
+    {
+        toastTimer?.Dispose();
+        toastMessage = message;
+        StateHasChanged();
+
+        toastTimer = new System.Timers.Timer(3000);
+        toastTimer.Elapsed += async (_, _) =>
+        {
+            toastTimer?.Dispose();
+            toastMessage = null;
+            await InvokeAsync(StateHasChanged);
+        };
+        toastTimer.AutoReset = false;
+        toastTimer.Start();
     }
 
     private record IngredientOption(int IngredientId, string IngredientName);

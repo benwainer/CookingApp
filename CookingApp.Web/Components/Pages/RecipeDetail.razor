@@ -4,19 +4,60 @@
 @inject AuthStateService Auth
 @inject UserLocationService Location
 
-<PageTitle>@(recipe?.Name ?? "Recipe")</PageTitle>
+<PageTitle>@(recipe?.Name ?? "Recipe") — Munch</PageTitle>
 
 @if (isLoading)
 {
-    <div class="loading-spinner">Loading recipe…</div>
+    <!-- ── Skeleton loader ──────────────────────────────────────────────── -->
+    <div class="recipe-detail" aria-busy="true" aria-label="Loading recipe">
+        <div class="skeleton-line skeleton-hero"></div>
+        <div class="skeleton-line skeleton-title"></div>
+        <div class="skeleton-line skeleton-sub"></div>
+        <div class="skeleton-line skeleton-sub short"></div>
+        <div class="skeleton-body">
+            <div class="skeleton-col">
+                @for (int i = 0; i < 5; i++) { <div class="skeleton-line skeleton-item"></div> }
+            </div>
+            <div class="skeleton-col">
+                <div class="skeleton-line skeleton-step long"></div>
+                <div class="skeleton-line skeleton-step medium"></div>
+                <div class="skeleton-line skeleton-step long"></div>
+                <div class="skeleton-line skeleton-step short2"></div>
+                <div class="skeleton-line skeleton-step medium"></div>
+            </div>
+        </div>
+    </div>
 }
 else if (recipe == null)
 {
-    <div class="empty-state">Recipe not found.</div>
+    <div class="empty-state" role="status">
+        <span class="empty-icon" aria-hidden="true">🍽️</span>
+        <h2>Recipe not found</h2>
+        <p>This recipe may have been removed or doesn't exist.</p>
+        <a href="/browse" class="btn-primary">Browse all recipes →</a>
+    </div>
 }
 else
 {
     <div class="recipe-detail">
+
+        <!-- ── Back + Share bar ───────────────────────────────────────── -->
+        <div class="recipe-topbar">
+            <button class="btn-secondary" @onclick='() => Nav.NavigateTo(backUrl)'>
+                ← Back
+            </button>
+            <button class="btn-icon-text" @onclick="ShareRecipe" aria-label="Copy link to recipe">
+                🔗 Share
+            </button>
+        </div>
+
+        <!-- ── Hero Image ────────────────────────────────────────────────── -->
+        @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+        {
+            <div class="recipe-detail-img">
+                <img src="@recipe.ImageUrl" alt="@recipe.Name" />
+            </div>
+        }
 
         <!-- ── Header ────────────────────────────────────────────────────── -->
         <div class="recipe-header">
@@ -25,24 +66,39 @@ else
                 <h1>@recipe.Name</h1>
                 <p class="recipe-description">@recipe.Description</p>
 
-                <div class="recipe-stats">
+                <div class="recipe-stats" aria-label="Recipe details">
                     <div class="stat"><span class="stat-label">Country</span> @recipe.Country</div>
                     <div class="stat"><span class="stat-label">Prep</span> @recipe.PrepTimeMinutes min</div>
                     <div class="stat"><span class="stat-label">Cook</span> @recipe.CookTimeMinutes min</div>
-                    <div class="stat"><span class="stat-label">Serves</span> @recipe.Servings</div>
+                    <div class="stat"><span class="stat-label">Serves</span> @(recipe.Servings * servingsMultiplier)</div>
                 </div>
 
-                <div class="flavor-chips">
+                <div class="flavor-chips" aria-label="Flavour tags">
                     @foreach (var tag in recipe.FlavorTags.Split(',', StringSplitOptions.RemoveEmptyEntries))
                     {
-                        <span class="flavor-chip">@tag</span>
+                        <span class="flavor-chip">@tag.Trim()</span>
                     }
+                </div>
+
+                <!-- Servings scaler -->
+                <div class="servings-scaler" aria-label="Adjust servings">
+                    <span class="servings-label">Servings</span>
+                    <div class="servings-btns">
+                        <button class="scaler-btn" @onclick="DecreaseServings"
+                                disabled="@(servingsMultiplier <= 1)" aria-label="Decrease servings">−</button>
+                        <span class="scaler-value">×@servingsMultiplier</span>
+                        <button class="scaler-btn" @onclick="IncreaseServings"
+                                disabled="@(servingsMultiplier >= 10)" aria-label="Increase servings">+</button>
+                    </div>
                 </div>
             </div>
 
             @if (Auth.IsLoggedIn)
             {
-                <button class="save-btn @(isSaved ? "saved" : "")" @onclick="ToggleSave">
+                <button class="save-btn @(isSaved ? "saved" : "")"
+                        @onclick="ToggleSave"
+                        aria-label="@(isSaved ? "Remove from saved recipes" : "Save this recipe")"
+                        aria-pressed="@(isSaved ? "true" : "false")">
                     @(isSaved ? "❤️ Saved" : "🤍 Save Recipe")
                 </button>
             }
@@ -51,24 +107,41 @@ else
         <div class="recipe-body">
 
             <!-- ── Ingredients ───────────────────────────────────────────── -->
-            <section class="ingredients-section">
+            <section class="ingredients-section" aria-label="Ingredients">
                 <div class="ingredients-header">
                     <h2>Ingredients</h2>
-                    <div class="unit-toggle">
-                        <button class="unit-btn @(selectedUnit == UnitSystem.Metric   ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Metric'>Metric</button>
-                        <button class="unit-btn @(selectedUnit == UnitSystem.Imperial ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Imperial'>Imperial</button>
-                        <button class="unit-btn @(selectedUnit == UnitSystem.Cups     ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Cups'>Cups</button>
-                        <button class="unit-btn @(selectedUnit == UnitSystem.Tbsp     ? "active" : "")" @onclick='() => selectedUnit = UnitSystem.Tbsp'>Tbsp</button>
-                </div>
+                    <div class="ingredients-controls">
+                        <!-- Unit toggle -->
+                        <div class="unit-toggle" role="group" aria-label="Unit system">
+                            <button class="unit-btn @(selectedUnit == UnitSystem.Metric   ? "active" : "")"
+                                    @onclick='() => selectedUnit = UnitSystem.Metric'
+                                    aria-pressed="@(selectedUnit == UnitSystem.Metric ? "true" : "false")">Metric</button>
+                            <button class="unit-btn @(selectedUnit == UnitSystem.Imperial ? "active" : "")"
+                                    @onclick='() => selectedUnit = UnitSystem.Imperial'
+                                    aria-pressed="@(selectedUnit == UnitSystem.Imperial ? "true" : "false")">Imperial</button>
+                            <button class="unit-btn @(selectedUnit == UnitSystem.Cups     ? "active" : "")"
+                                    @onclick='() => selectedUnit = UnitSystem.Cups'
+                                    aria-pressed="@(selectedUnit == UnitSystem.Cups ? "true" : "false")">Cups</button>
+                            <button class="unit-btn @(selectedUnit == UnitSystem.Tbsp     ? "active" : "")"
+                                    @onclick='() => selectedUnit = UnitSystem.Tbsp'
+                                    aria-pressed="@(selectedUnit == UnitSystem.Tbsp ? "true" : "false")">Tbsp</button>
+                        </div>
+                    </div>
                 </div>
                 <ul class="ingredient-list">
                     @foreach (var ing in recipe.Ingredients)
                     {
                         var i = ing;
+                        var isChecked = checkedIngredients.Contains(i.IngredientId);
                         var (_, descriptor) = SplitQuantity(i.Quantity);
-                        <li class="ingredient-item">
+                        <li class="ingredient-item @(isChecked ? "checked" : "")">
                             <div class="ingredient-main">
-                                <span class="ingredient-qty">@ConvertQuantity(i.Quantity, i.IngredientName)</span>
+                                <button class="check-btn" @onclick="() => ToggleIngredientCheck(i.IngredientId)"
+                                        aria-label="@(isChecked ? "Uncheck" : "Check") @i.IngredientName"
+                                        aria-pressed="@(isChecked ? "true" : "false")">
+                                    @(isChecked ? "✓" : "○")
+                                </button>
+                                <span class="ingredient-qty" aria-label="Quantity">@ConvertQuantity(i.Quantity, i.IngredientName)</span>
                                 <span class="ingredient-name">@i.IngredientName</span>
                                 @if (!string.IsNullOrEmpty(descriptor))
                                 {
@@ -81,27 +154,41 @@ else
                             </div>
 
                             <div class="ingredient-actions">
-                                <!-- Find nearby store -->
-                                <button class="btn-icon" title="Find nearby store"
+                                <button class="btn-icon"
+                                        title="Find nearby store"
+                                        aria-label="Find nearby store for @i.IngredientName"
                                         @onclick="() => FindStore(i.IngredientName)">
                                     🏪
                                 </button>
 
-                                <!-- I don't have this -->
                                 @if (ingredientsWithSubstitutes.Contains(i.IngredientId))
                                 {
                                     <button class="btn-icon substitute-btn"
                                             title="I don't have this"
+                                            aria-label="Find substitute for @i.IngredientName"
                                             @onclick="() => RequestSubstitute(i.IngredientId, i.IngredientName)">
                                         🔄 I don't have this
                                     </button>
                                 }
+
+                                @if (Auth.IsLoggedIn && i.CanonicalIngredientId.HasValue)
+                                {
+                                    var isDisliked = dislikedCanonicalIds.Contains(i.CanonicalIngredientId.Value);
+                                    <button class="btn-dislike @(isDisliked ? "active" : "")"
+                                            title="@(isDisliked ? "Remove dislike" : "I don't like this ingredient")"
+                                            aria-label="@(isDisliked ? "Remove dislike for" : "Dislike") @i.IngredientName"
+                                            aria-pressed="@(isDisliked ? "true" : "false")"
+                                            @onclick="() => ToggleDislike(i.CanonicalIngredientId!.Value)">
+                                        👎
+                                    </button>
+                                }
                             </div>
 
-                            <!-- Substitute panel -->
                             @if (substituteState.TryGetValue(i.IngredientId, out var state))
                             {
-                                <div class="substitute-panel @(state.Sub == null ? "no-sub" : "")">
+                                <div class="substitute-panel @(state.Sub == null ? "no-sub" : "")"
+                                     role="status"
+                                     aria-label="Substitute for @i.IngredientName">
                                     @if (state.IsLoading)
                                     {
                                         <span>Finding substitute…</span>
@@ -138,10 +225,9 @@ else
                                 </div>
                             }
 
-                            <!-- Nearby store panel -->
                             @if (storeResults.TryGetValue(i.IngredientName, out var stores))
                             {
-                                <div class="store-panel">
+                                <div class="store-panel" role="status" aria-label="Nearby stores for @i.IngredientName">
                                     @if (stores.Count == 0)
                                     {
                                         <p>No nearby stores found.</p>
@@ -157,10 +243,10 @@ else
                                                     <span>@store.DistanceKm km away</span>
                                                 </div>
                                                 <div class="store-status">
-                                                    @(store.IsOpenNow ? "🟢 Open" : "🔴 Closed")
+                                                    <span>@(store.IsOpenNow ? "🟢 Open" : "🔴 Closed")</span>
                                                     @if (store.GoogleMapsUrl != null)
                                                     {
-                                                        <a href="@store.GoogleMapsUrl" target="_blank">Maps →</a>
+                                                        <a href="@store.GoogleMapsUrl" target="_blank" rel="noopener noreferrer" aria-label="Open @store.Name in Maps">Maps →</a>
                                                     }
                                                 </div>
                                             </div>
@@ -174,15 +260,72 @@ else
             </section>
 
             <!-- ── Instructions ──────────────────────────────────────────── -->
-            <section class="instructions-section">
-                <h2>Instructions</h2>
-                <ol class="instruction-list">
-                    @foreach (var step in recipe.Instructions.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        <li>@step.TrimStart('0','1','2','3','4','5','6','7','8','9','.',' ')</li>
-                    }
-                </ol>
+            <section class="instructions-section" aria-label="Instructions">
+                <div class="instructions-header">
+                    <h2>Instructions</h2>
+                    <button class="btn-secondary"
+                            @onclick="ToggleStepMode"
+                            aria-pressed="@(stepByStepMode ? "true" : "false")"
+                            aria-label="@(stepByStepMode ? "Switch to show all steps" : "Switch to step-by-step mode")">
+                        @(stepByStepMode ? "Show all" : "Step-by-step")
+                    </button>
+                </div>
+
+                @if (stepByStepMode && instructionSteps.Length > 0)
+                {
+                    <div class="step-by-step" aria-live="polite">
+                        <div class="step-counter-row">
+                            <span class="step-counter">Step @(currentStepIndex + 1) of @instructionSteps.Length</span>
+                        </div>
+                        <div class="step-progress" role="progressbar"
+                             aria-valuenow="@(currentStepIndex + 1)"
+                             aria-valuemin="1"
+                             aria-valuemax="@instructionSteps.Length">
+                            <div class="step-progress-fill"
+                                 style="width: @(StepProgressPct)%">
+                            </div>
+                        </div>
+                        <div class="step-text">@instructionSteps[currentStepIndex]</div>
+                        <div class="step-controls">
+                            <button class="btn-secondary"
+                                    @onclick="PrevStep"
+                                    disabled="@(currentStepIndex == 0)"
+                                    aria-label="Previous step">
+                                ← Back
+                            </button>
+                            @if (currentStepIndex < instructionSteps.Length - 1)
+                            {
+                                <button class="btn-primary" @onclick="NextStep" aria-label="Next step">
+                                    Next →
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn-primary" @onclick="ToggleStepMode" aria-label="Finished">
+                                    ✅ Done!
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <ol class="instruction-list">
+                        @foreach (var step in instructionSteps)
+                        {
+                            <li>@step</li>
+                        }
+                    </ol>
+                }
             </section>
         </div>
     </div>
+
+    <!-- ── Toast ──────────────────────────────────────────────────────────── -->
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="toast-container" aria-live="polite" aria-atomic="true">
+            <div class="toast success" role="status">@toastMessage</div>
+        </div>
+    }
 }

@@ -1,5 +1,6 @@
 using Blazored.LocalStorage;
 using Microsoft.JSInterop;
+using System.Text.Json;
 
 namespace CookingApp.Web.Services;
 
@@ -21,16 +22,23 @@ public class AuthStateService(ILocalStorageService storage)
         var displayName = await storage.GetItemAsync<string>("display_name");
         var userId = await storage.GetItemAsync<int>("user_id");
 
-        if (!string.IsNullOrEmpty(token))
+        if (!string.IsNullOrEmpty(token) && !IsTokenExpired(token))
         {
             IsLoggedIn = true;
             UserId = userId;
             DisplayName = displayName ?? string.Empty;
             NotifyStateChanged();
         }
+        else if (!string.IsNullOrEmpty(token))
+        {
+            // Token expired — clear storage
+            await storage.RemoveItemAsync("auth_token");
+            await storage.RemoveItemAsync("display_name");
+            await storage.RemoveItemAsync("user_id");
+        }
     }
 
-    public async void Login(string token, int userId, string displayName)
+    public async Task LoginAsync(string token, int userId, string displayName)
     {
         await storage.SetItemAsync("auth_token", token);
         await storage.SetItemAsync("display_name", displayName);
@@ -42,7 +50,7 @@ public class AuthStateService(ILocalStorageService storage)
         NotifyStateChanged();
     }
 
-    public async void Logout()
+    public async Task LogoutAsync()
     {
         await storage.RemoveItemAsync("auth_token");
         await storage.RemoveItemAsync("display_name");
@@ -52,6 +60,34 @@ public class AuthStateService(ILocalStorageService storage)
         UserId = 0;
         DisplayName = string.Empty;
         NotifyStateChanged();
+    }
+
+    private static bool IsTokenExpired(string token)
+    {
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length != 3) return true;
+
+            var payload = parts[1];
+            // Pad base64url to standard base64
+            var padded = payload.Replace('-', '+').Replace('_', '/');
+            padded = padded.PadRight(padded.Length + (4 - padded.Length % 4) % 4, '=');
+
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(padded));
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("exp", out var expEl))
+            {
+                var exp = expEl.GetInt64();
+                var expiry = DateTimeOffset.FromUnixTimeSeconds(exp);
+                return expiry <= DateTimeOffset.UtcNow;
+            }
+            return true;
+        }
+        catch
+        {
+            return true;
+        }
     }
 
     private void NotifyStateChanged() => OnChange?.Invoke();

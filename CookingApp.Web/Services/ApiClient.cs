@@ -63,6 +63,13 @@ public class ApiClient(HttpClient http, ILocalStorageService storage)
         http.GetFromJsonAsync<List<string>>("/api/recipes/main-ingredients", JsonOpts)
             .ContinueWith(t => t.Result ?? []);
 
+    public async Task<Dictionary<string, List<string>>> GetIngredientsByCategoryAsync()
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<Dictionary<string, List<string>>>(
+            "/api/recipes/canonical-ingredients", JsonOpts) ?? new();
+    }
+
     // ── Substitutes ───────────────────────────────────────────────────────────
 
     public async Task<SubstituteDto?> GetNextSubstituteAsync(int ingredientId, List<int> alreadySuggested)
@@ -87,10 +94,16 @@ public class ApiClient(HttpClient http, ILocalStorageService storage)
         res.EnsureSuccessStatusCode();
     }
 
-    public async Task<List<RecipeSummaryDto>> GetSavedRecipesAsync()
+    public async Task<List<SavedRecipeSummaryDto>> GetSavedRecipesAsync()
     {
         await AttachTokenAsync();
-        return await http.GetFromJsonAsync<List<RecipeSummaryDto>>("/api/users/saved-recipes", JsonOpts) ?? [];
+        return await http.GetFromJsonAsync<List<SavedRecipeSummaryDto>>("/api/users/saved-recipes", JsonOpts) ?? [];
+    }
+
+    public async Task<bool> IsRecipeSavedAsync(int id)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<bool>($"/api/users/saved-recipes/{id}", JsonOpts);
     }
 
     public async Task SaveRecipeAsync(int id)
@@ -105,10 +118,37 @@ public class ApiClient(HttpClient http, ILocalStorageService storage)
         await http.DeleteAsync($"/api/users/saved-recipes/{id}");
     }
 
+    public async Task UpdateRecipeNotesAsync(int id, string? notes)
+    {
+        await AttachTokenAsync();
+        await http.PatchAsJsonAsync($"/api/users/saved-recipes/{id}/notes",
+            new UpdateRecipeNotesRequest(notes));
+    }
+
+    public async Task<List<DislikedIngredientDto>> GetDislikedIngredientsAsync()
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<List<DislikedIngredientDto>>(
+            "/api/users/disliked-ingredients", JsonOpts) ?? [];
+    }
+
+    public async Task DislikeIngredientAsync(int canonicalIngredientId)
+    {
+        await AttachTokenAsync();
+        await http.PostAsync($"/api/users/dislike-ingredient/{canonicalIngredientId}", null);
+    }
+
+    public async Task UnDislikeIngredientAsync(int canonicalIngredientId)
+    {
+        await AttachTokenAsync();
+        await http.DeleteAsync($"/api/users/dislike-ingredient/{canonicalIngredientId}");
+    }
+
     // ── AI ────────────────────────────────────────────────────────────────────
 
     public async Task<AiChatResponse> AiChatAsync(AiChatRequest req)
     {
+        await AttachTokenAsync();
         var res = await http.PostAsJsonAsync("/api/ai/chat", req);
         res.EnsureSuccessStatusCode();
         return (await res.Content.ReadFromJsonAsync<AiChatResponse>(JsonOpts))!;

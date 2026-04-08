@@ -23,7 +23,7 @@ public class RecipeService(IRecipeRepository repo, IUserRepository userRepo) : I
             if (rawPrefs != null)
                 prefs = new UserPreferencesDto(
                 rawPrefs.DislikedFlavors.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-                rawPrefs.DislikedIngredients.Select(d => d.IngredientId).ToList()
+                rawPrefs.DislikedIngredients.Select(d => d.CanonicalIngredientId).ToList()
             );
         }
 
@@ -40,6 +40,9 @@ public class RecipeService(IRecipeRepository repo, IUserRepository userRepo) : I
 
     public Task<List<string>> GetAllMainIngredientsAsync() =>
         repo.GetAllMainIngredientsAsync();
+
+    public Task<Dictionary<string, List<string>>> GetIngredientsByCategoryAsync() =>
+        repo.GetIngredientsByCategoryAsync();
 }
 
 // ─── SubstituteService ────────────────────────────────────────────────────────
@@ -94,7 +97,7 @@ public class UserService(IUserRepository repo, IConfiguration config) : IUserSer
 
         return new UserPreferencesDto(
             prefs.DislikedFlavors.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-            prefs.DislikedIngredients.Select(d => d.IngredientId).ToList()
+            prefs.DislikedIngredients.Select(d => d.CanonicalIngredientId).ToList()
         );
     }
 
@@ -107,8 +110,23 @@ public class UserService(IUserRepository repo, IConfiguration config) : IUserSer
     public Task UnsaveRecipeAsync(int userId, int recipeId) =>
         repo.UnsaveRecipeAsync(userId, recipeId);
 
-    public Task<List<RecipeSummaryDto>> GetSavedRecipesAsync(int userId) =>
+    public Task<bool> IsRecipeSavedAsync(int userId, int recipeId) =>
+        repo.IsRecipeSavedAsync(userId, recipeId);
+
+    public Task<List<SavedRecipeSummaryDto>> GetSavedRecipesAsync(int userId) =>
         repo.GetSavedRecipesAsync(userId);
+
+    public Task UpdateRecipeNotesAsync(int userId, int recipeId, string? notes) =>
+        repo.UpdateRecipeNotesAsync(userId, recipeId, notes);
+
+    public Task DislikeIngredientAsync(int userId, int canonicalIngredientId) =>
+        repo.DislikeIngredientAsync(userId, canonicalIngredientId);
+
+    public Task UnDislikeIngredientAsync(int userId, int canonicalIngredientId) =>
+        repo.UnDislikeIngredientAsync(userId, canonicalIngredientId);
+
+    public Task<List<DislikedIngredientDto>> GetDislikedIngredientsAsync(int userId) =>
+        repo.GetDislikedIngredientsAsync(userId);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

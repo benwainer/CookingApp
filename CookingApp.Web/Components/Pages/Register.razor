@@ -51,12 +51,16 @@
         {
             var result = await Api.RegisterAsync(
                 new CookingApp.Core.DTOs.RegisterRequest(email, displayName, password));
-            Auth.Login(result.Token, result.UserId, result.DisplayName);
+            await Auth.LoginAsync(result.Token, result.UserId, result.DisplayName);
             Nav.NavigateTo("/");
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
-            error = ex.Message;
+            error = "This email is already registered. Try logging in instead.";
+        }
+        catch
+        {
+            error = "Something went wrong. Please try again.";
         }
         isLoading = false;
     }
